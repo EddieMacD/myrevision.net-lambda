@@ -5,12 +5,14 @@ exports.handler = async (event) => {
     var numOfQuestions = parseInt(event.queryStringParameters.numOfQuestions);
     ///Stores the file path to get to the questions. Sent through API
     var filePath = event.queryStringParameters.filePath;
+    ///Stores the topic(s) that are to be loaded during the 
+    var topics = event.multiQueryStringParameters.topics;
     ///The response object - to be sent back through the api. One object to make the JSON rsponse formatting easier
     var responseObject = {};
     
     //Loading
     ///Loads the response object with questions and indexes. Awaits the S3 calls
-    responseObject.questions = await getQuestions(numOfQuestions, filePath);
+    responseObject.questions = await getQuestions(numOfQuestions, filePath, topics);
 
     //Generates a valid lambda response that the API gateway will accept
     return generateLambdaResponse(responseObject);
@@ -34,7 +36,7 @@ AWS.config.update({
 //Sorts out which question to get from s3, then pulls it from the object store
 ///numOfQuestions: the number of questions that the user has requested
 ///filePath: the location of the text files in s3
-async function getQuestions(numOfQuestions, filePath){
+async function getQuestions(numOfQuestions, filePath, topics){
     //Variables
     var responseObject = {
         ///Stores the questions
@@ -53,6 +55,8 @@ async function getQuestions(numOfQuestions, filePath){
     ///Loops through the same amount of times that questions are asked for
     for(var i = 0; i < numOfQuestions; i++)
     {
+        var currentTopic = Math.floor(Math.random() * topics.length);
+
         ///Boolean variable for do while control
         var validNum = false;
         ///Temp variable for the file that is to be looked up for the question
@@ -61,9 +65,9 @@ async function getQuestions(numOfQuestions, filePath){
         ///Loops through until a valid file is found
         do {
             ///Generates a random number between 0 and the max value in the index file
-            var n = Math.floor(Math.random() * index.count);
+            var n = Math.floor(Math.random() * index[topics[currentTopic]].count);
             ///Looks up the random number and returns the file name stored in the index file
-            fileName = index.questions[n].q;
+            fileName = index[topics[currentTopic]].questions[n].q;
             
             ///If the random file name hasn't been used yet
             if(!responseObject.indexes.includes(fileName)) {
