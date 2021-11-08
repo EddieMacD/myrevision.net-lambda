@@ -1,21 +1,25 @@
 exports.handler = async (event) => {
-    //Variables
-    ///The indexes of the loaded questions - needed to get the correct answers in the correct order. Parsed through API
-    var indexes = event.multiValueQueryStringParameters.indexes;
-    ///The location of the question files in the S3 bucket, sent through the API
-    var filePath = event.queryStringParameters.filePath;
-    ///The response object - to be sent back through the api. One object to make the JSON rsponse formatting easier
-    var responseObject = {
-        ///The answers that correspond with the ids and the questions
-        answers: []
-    };
+    try {
+        //Variables
+        ///The indexes of the loaded questions - needed to get the correct answers in the correct order. Parsed through API
+        var indexes = event.multiValueQueryStringParameters.indexes;
+        ///The location of the question files in the S3 bucket, sent through the API
+        var filePath = event.queryStringParameters.filePath;
+        ///The response object - to be sent back through the api. One object to make the JSON rsponse formatting easier
+        var responseObject = {
+            ///The answers that correspond with the ids and the questions
+            answers: []
+        };
+        
+        //Get answers
+        ///Loads the response object with answers
+        responseObject.answers = await getAnswers(indexes, filePath);
     
-    //Get answers
-    ///Loads the response object with answers
-    responseObject.answers = await getAnswers(indexes, filePath);
-
-    //Generates a valid lambda response that the API gateway will accept
-    return generateLambdaResponse(responseObject);
+        //Generates a valid lambda response that the API gateway will accept
+        return generateLambdaResponse(responseObject);
+    } catch (error) {
+        return generateErrorResponse(error);
+    }
 };
 
 //Global constants
@@ -25,8 +29,6 @@ const AWS = require('aws-sdk');
 const s3 = new AWS.S3({ apiVersion: '2006-03-01' });
 ///S3 bucket name - needed to pull objects from the correct place
 const bucketID = "mrn-questiondata";
-///Name of the index file(s)
-const indexID = "_index.json";
 
 ///Region that the bucket is stored in. Needed to pull object from the correct bucket - updated into the aws config
 AWS.config.update({
@@ -72,19 +74,12 @@ async function getFile (fileName){
     ///Variable to store the response
     var data = {};
     
-    ///In a try catch to handle errors
-    try{
-        ///Put the body of the s3 request in a constant
-        const { Body } = await s3.getObject(params).promise();
-        ///Convert the response into an object and store that in a varaible to reurn
-        data = JSON.parse(Body.toString());
-        ///For testing
-        //console.log("Body: " + JSON.stringify(data));
-    }
-    catch (err) {
-        ///Log the error if there is one
-        console.log(err);
-    }
+    ///Put the body of the s3 request in a constant
+    const { Body } = await s3.getObject(params).promise();
+    ///Convert the response into an object and store that in a varaible to reurn
+    data = JSON.parse(Body.toString());
+    ///For testing
+    //console.log("Body: " + JSON.stringify(data));
     
     return data;
 }
@@ -104,5 +99,25 @@ function generateLambdaResponse(responseObject) {
         ///Is the response encoded in base 64
         "isBase64Encoded": false
     };
+    return response;
+}
+
+
+//Formats an error into a response that the APi gateway will accept
+function generateErrorResponse(error) {
+    //Generate response
+    const response = {
+        ///HTTP status code for bad
+        "statusCode": 500,
+        ///Allow call from anwyhere - must sync with API
+        "headers": {
+            "access-control-allow-origin": "*"
+        },
+        ///My data to be sent
+        "body": error.toString(),
+        ///Is the response encoded in base 64
+        "isBase64Encoded": false
+    };
+    
     return response;
 }
