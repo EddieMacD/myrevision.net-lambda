@@ -13,11 +13,11 @@ exports.handler = async (event) => {
         var topics = params.topics;
         ///The response object - to be sent back through the api. One object to make the JSON rsponse formatting easier
         var responseObject = {};
-        
+
         //Loading
         ///Loads the response object with questions and indexes. Awaits the S3 calls
         responseObject.questions = await getQuestions(numOfQuestions, filePath, topics);
-    
+
         //Generates a valid lambda response that the API gateway will accept
         return generateLambdaResponse(responseObject);
     } catch (error) {
@@ -38,13 +38,13 @@ const rdsDataService = new AWS.RDSDataService();
 
 ///Region that the bucket is stored in. Needed to pull object from the correct bucket - updated into the aws config
 AWS.config.update({
-  region: "eu-west-2",
+    region: "eu-west-2",
 });
 
 //Sorts out which question to get from s3, then pulls it from the object store
 ///numOfQuestions: the number of questions that the user has requested
 ///filePath: the location of the text files in s3
-async function getQuestions(numOfQuestions, filePath, topics){
+async function getQuestions(numOfQuestions, filePath, topics) {
     //Variables
     ///The type of files that are pulled from S3
     const fileType = ".json";
@@ -67,7 +67,7 @@ async function getQuestions(numOfQuestions, filePath, topics){
     responseObject.indexes = extractIndexes(responseObject.indexes.records);
 
     ///For every question that the user wants
-    for(var i = 0; i < numOfQuestions; i++) {
+    for (var i = 0; i < numOfQuestions; i++) {
         ///Get the question's file
         responseObject.questions.push(await getFile(filePath + responseObject.indexes[i] + fileType));
         ///Filter out the question file until only the question remains
@@ -83,7 +83,7 @@ function concatTopicLine(topics) {
     //Variables
     ///The string to contain the concatenated topic line
     var topicLine = '';
-    
+
 
     //Concatenation
     ///An old method that makes no sense in hindsight
@@ -109,11 +109,11 @@ function concatTopicLine(topics) {
     topicLine = 'topic="' + topics[0] + '"';
 
     ///For every other item in the array
-    for(var i = 1; i < topics.count(); i++) {
+    for (var i = 1; i < topics.count; i++) {
         ///Add that topic to the line with an or
-        topicLine += ' OR topic="' + element + '"';
+        topicLine += ' OR topic="' + topics[i] + '"';
     }
-    
+
     return topicLine;
 }
 
@@ -121,7 +121,7 @@ function concatTopicLine(topics) {
 ///numOfQuestion: the number of question that the user wants
 ///filePath: the location of the files in the S3 file system - what syllabus the question belongs to
 ///topics: a tring containing all of the available topics concatenated into one string, formatted appropriately for the SQL statement
-async function getIndexes (numOfQuestions, filePath, topics) {
+async function getIndexes(numOfQuestions, filePath, topics) {
     ///Encapsulated database failure and basic error message to prevent database's existance from being public. Helps prevent SQL injection
     try {
         //Get Indexes
@@ -135,7 +135,7 @@ async function getIndexes (numOfQuestions, filePath, topics) {
             database: 'mrn_database',
             includeResultMetadata: false
         };
-        
+
         ///Execute the SQL statement
         return rdsDataService.executeStatement(sqlParams).promise();
     } catch (e) {
@@ -155,16 +155,16 @@ function extractIndexes(input) {
         ///Push the actual string value to the new array
         indexes.push(element[0].stringValue);
     })
-    
+
     return indexes;
 }
 
 //Gets the specified file from S3
 ///fileName: the name of the file to be pulled from S3
-async function getFile (fileName){
+async function getFile(fileName) {
     ///For testing
     //console.log("get file: " + fileName);
-    
+
     //S3 call parameters
     ///Stored in an object to be parsed correctly 
     const params = {
@@ -173,7 +173,7 @@ async function getFile (fileName){
         ///The the file path and the name of the file that is being pulled
         Key: fileName
     };
-    
+
     //S3 pull
     ///Variable to store the response
     var data = {};
@@ -184,7 +184,7 @@ async function getFile (fileName){
     data = JSON.parse(Body.toString());
     ///For testing
     //console.log("Body: " + JSON.stringify(data));
-    
+
     return data;
 }
 
@@ -203,7 +203,7 @@ function generateLambdaResponse(responseObject) {
         ///Is the response encoded in base 64
         "isBase64Encoded": false
     };
-    
+
     return response;
 }
 
@@ -222,6 +222,6 @@ function generateErrorResponse(error) {
         ///Is the response encoded in base 64
         "isBase64Encoded": false
     };
-    
+
     return response;
 }
